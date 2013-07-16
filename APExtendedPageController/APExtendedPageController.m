@@ -15,6 +15,7 @@
     UIView * _rightView;
     
     NSInteger _newIndex;
+    APPageDirection _scrollDirection;
 }
 
 @end
@@ -22,11 +23,11 @@
 #define indexLeft   -1
 #define indexCenter  0
 #define indexRight   1
-
+//------------------------------------------------------------------------------
 @implementation APExtendedPageController
 @synthesize extendedPageControllerDelegate = _extendedPageControllerDelegate;
 @synthesize mainView = _mainView;
-@synthesize actualIndex = _actualIndex;
+//@synthesize actualIndex = _actualIndex;
 @synthesize displayBorder = _displayBorder;
 
 -               (id)initWithFrame: (CGRect)frame
@@ -37,7 +38,7 @@
     self = [super initWithFrame:frame];
     if (self) {
         _extendedPageControllerDelegate = extendedPageControllerDelegate;
-        _actualIndex = 0;
+        //        _actualIndex = 0;
         _mainView = mainView;
         _displayBorder = YES;
         
@@ -46,32 +47,46 @@
         self.pagingEnabled = YES;
         self.showsHorizontalScrollIndicator = NO;
         self.showsVerticalScrollIndicator = NO;
-        self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        self.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+                                UIViewAutoresizingFlexibleHeight;
         self.autoresizesSubviews = YES;
         
         _mainView.frame = [self _frameForViewWithIndex:indexLeft];
-        _mainView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        _mainView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+                                     UIViewAutoresizingFlexibleHeight;
         _mainView.autoresizesSubviews = YES;
         [self addSubview:_mainView];
         
-        if ([_extendedPageControllerDelegate respondsToSelector:@selector(extendedPageController:viewAtIndex:)]) {
-            _rightView = [_extendedPageControllerDelegate extendedPageController:self viewAtIndex:_actualIndex+indexRight];
+        if ([_extendedPageControllerDelegate
+             respondsToSelector:@selector(extendedPageController:direction:)])
+        {
+            _rightView = [_extendedPageControllerDelegate
+                          extendedPageController:self
+                          direction:APPageDirectionNext];
+            
             _rightView.frame = [self _frameForViewWithIndex:indexCenter];
-            _rightView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+            _rightView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+                                          UIViewAutoresizingFlexibleHeight;
             _rightView.autoresizesSubviews = YES;
             [self addSubview:_rightView];
         }
         
-        self.contentSize = CGSizeMake(self.frame.size.width * ((_leftView ? 1 : 0) + (_mainView ? 1 : 0) + (_rightView ? 1 : 0)), self.frame.size.height);
+        self.contentSize = CGSizeMake(self.frame.size.width * ((_leftView ? 1 : 0) +
+                                                               (_mainView ? 1 : 0) +
+                                                               (_rightView ? 1 : 0)),
+                                      self.frame.size.height);
     }
     return self;
 }
-
+//------------------------------------------------------------------------------
 - (void)layoutSubviews {
     [super layoutSubviews];
     
     if (((int)self.contentSize.width % 320) != 0) {
-        self.contentSize = CGSizeMake(self.frame.size.width * ((_leftView ? 1 : 0) + (_mainView ? 1 : 0) + (_rightView ? 1 : 0)), self.frame.size.height);
+        self.contentSize = CGSizeMake(self.frame.size.width * ((_leftView ? 1 : 0) +
+                                                               (_mainView ? 1 : 0) +
+                                                               (_rightView ? 1 : 0)),
+                                      self.frame.size.height);
         self.contentOffset = CGPointMake(_leftView ? self.frame.size.width : 0, 0);
         
         
@@ -82,6 +97,7 @@
     }
 }
 
+//------------------------------------------------------------------------------
 #define maxScale        .85
 #define vBorderWidth     4.
 
@@ -95,17 +111,22 @@
         
         if (!_isScrolling) {
             if ((int)contentOffset.x > (_leftView ? self.frame.size.width : 0)) {
-                _newIndex = _actualIndex + 1;
+                //_newIndex = _actualIndex + 1;
+                _scrollDirection = APPageDirectionNext;
             }
             else if (_leftView && (int)contentOffset.x < self.frame.size.width) {
-                _newIndex = _actualIndex - 1;
+                //_newIndex = _actualIndex - 1;
+                _scrollDirection = APPageDirectionPrevious;
+            }else{
+                _scrollDirection = APPageDirectionNone;
             }
         }
         
         _isScrolling = YES;
         
         int newX = abs(self.frame.size.width - contentOffset.x);
-        float newScale = 1 - (newX > 0 ? (float)newX/self.frame.size.width : 1)*(newX > 0 ? (float)newX/self.frame.size.width : 1)*2;
+        float newScale = 1 - (newX > 0 ? (float)newX/self.frame.size.width : 1) *
+                             (newX > 0 ? (float)newX/self.frame.size.width : 1) * 2;
         
         if (newScale < 0) {
             newScale = -newScale;
@@ -117,76 +138,166 @@
             newScale = 1.;
         }
         
-        [self _resetView:_mainView withScaleFactor:newScale];
+        [self _resetView:_mainView
+         withScaleFactor:newScale];
         
         if (_leftView) {
-            [self _resetView:_leftView withScaleFactor:newScale];
+            [self _resetView:_leftView
+             withScaleFactor:newScale];
         }
         if (_rightView) {
-            [self _resetView:_rightView withScaleFactor:newScale];
+            [self _resetView:_rightView
+             withScaleFactor:newScale];
         }
         
     }
 }
 
+//------------------------------------------------------------------------------
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
     [self _rearrangeViews];
 }
 
 
-
+//------------------------------------------------------------------------------
 #pragma mark - private methods
 
 - (void)_rearrangeViews {
+    
+    NSLog(@"Content offset x: %.2f , view width: %.2f", self.contentOffset.x, self.frame.size.width);
     _isScrolling = NO;
     
     for (UIView *view in self.subviews) {
         [view removeFromSuperview];
     }
-    
+    UIView* dumpedView = nil;
+    NSInteger dumpIndex = -1;
     
     if (((int)self.contentOffset.x < self.frame.size.width && _leftView)) {
         
+        dumpedView = _rightView;
         _rightView = _mainView;
         _mainView = _leftView;
-        
-        if (_actualIndex != _newIndex) {
-            _actualIndex = _newIndex;
+        _leftView = nil;
+        if ([_extendedPageControllerDelegate
+             respondsToSelector:@selector(extendedPageController:didMoveDirection:)])
+        {
+            [_extendedPageControllerDelegate extendedPageController:self didMoveDirection:APPageDirectionPrevious];
         }
         
-        if ([_extendedPageControllerDelegate respondsToSelector:@selector(extendedPageController:viewAtIndex:)]) {
-            _leftView = [_extendedPageControllerDelegate extendedPageController:self viewAtIndex:_actualIndex+indexLeft];
-            _leftView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+//        if (_actualIndex != _newIndex) {
+//            _actualIndex = _newIndex;
+//        }
+
+        //dumpIndex = _actualIndex + 2 * indexRight;
+        
+        NSLog(@"DumpView: %@", dumpedView);
+        if ([_extendedPageControllerDelegate
+             respondsToSelector:@selector(extendedPageController:direction:)])
+        {
+//            _leftView = [_extendedPageControllerDelegate
+//                         extendedPageController:self
+//                         viewAtIndex:_actualIndex+indexLeft];
+            _leftView = [_extendedPageControllerDelegate
+                         extendedPageController:self
+                         direction:(APPageDirectionPrevious)];
+            
+            _leftView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+                                         UIViewAutoresizingFlexibleHeight;
             _leftView.autoresizesSubviews = YES;
         }
     }
     else if (((int)self.contentOffset.x > self.frame.size.width && _rightView)) {
-        
+        dumpedView = _leftView;
         _leftView = _mainView;
         _mainView = _rightView;
-        
-        if (_actualIndex != _newIndex) {
-            _actualIndex = _newIndex;
+        _rightView = nil;
+        if ([_extendedPageControllerDelegate
+             respondsToSelector:@selector(extendedPageController:didMoveDirection:)])
+        {
+            [_extendedPageControllerDelegate extendedPageController:self didMoveDirection:APPageDirectionNext];
         }
         
-        if ([_extendedPageControllerDelegate respondsToSelector:@selector(extendedPageController:viewAtIndex:)]) {
-            _rightView = [_extendedPageControllerDelegate extendedPageController:self viewAtIndex:_actualIndex+indexRight];
-            _rightView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+
+        
+//        if (_actualIndex != _newIndex) {
+//            _actualIndex = _newIndex;
+//        }
+//        dumpIndex = _actualIndex + 2 * indexLeft;
+        
+        NSLog(@"DumpView: %@, atIndex: %d", dumpedView, dumpIndex);
+        if ([_extendedPageControllerDelegate
+             respondsToSelector:@selector(extendedPageController:direction:)])
+        {
+            
+            
+//            _rightView = [_extendedPageControllerDelegate
+//                          extendedPageController:self
+//                          viewAtIndex:_actualIndex+indexRight];
+            
+            _rightView = [_extendedPageControllerDelegate
+                          extendedPageController:self
+                          direction:APPageDirectionNext];
+            
+            _rightView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+                                          UIViewAutoresizingFlexibleHeight;
             _rightView.autoresizesSubviews = YES;
         }
     }
-    else if ((int)self.contentOffset.x == self.frame.size.width && _actualIndex == 0) {
-        
+    else if ((int)self.contentOffset.x == self.frame.size.width && !_leftView) {
+//        dumpedView = _leftView;
+//        _leftView = _mainView;
+//        _mainView = _rightView;
+//        
+//        if (_actualIndex != _newIndex) {
+//            _actualIndex = _newIndex;
+//        }
+//        dumpIndex = _actualIndex + 2 * indexLeft;
+//        NSLog(@"DumpView: %@, atIndex: %d", dumpedView, dumpIndex);
+//        if ([_extendedPageControllerDelegate
+//             respondsToSelector:@selector(extendedPageController:viewAtIndex:)])
+//        {
+//            _rightView = [_extendedPageControllerDelegate
+//                          extendedPageController:self
+//                          viewAtIndex:_actualIndex+indexRight];
+//            
+//            _rightView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+//                                          UIViewAutoresizingFlexibleHeight;
+//            _rightView.autoresizesSubviews = YES;
+//        }
+        dumpedView = _leftView;
         _leftView = _mainView;
         _mainView = _rightView;
-        
-        if (_actualIndex != _newIndex) {
-            _actualIndex = _newIndex;
+        _rightView = nil;
+        if ([_extendedPageControllerDelegate
+             respondsToSelector:@selector(extendedPageController:didMoveDirection:)])
+        {
+            [_extendedPageControllerDelegate extendedPageController:self didMoveDirection:APPageDirectionNext];
         }
         
-        if ([_extendedPageControllerDelegate respondsToSelector:@selector(extendedPageController:viewAtIndex:)]) {
-            _rightView = [_extendedPageControllerDelegate extendedPageController:self viewAtIndex:_actualIndex+indexRight];
-            _rightView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        
+        
+        //        if (_actualIndex != _newIndex) {
+        //            _actualIndex = _newIndex;
+        //        }
+        //        dumpIndex = _actualIndex + 2 * indexLeft;
+        
+        NSLog(@"DumpView: %@, atIndex: %d", dumpedView, dumpIndex);
+        if ([_extendedPageControllerDelegate
+             respondsToSelector:@selector(extendedPageController:direction:)])
+        {
+            
+            
+            //            _rightView = [_extendedPageControllerDelegate
+            //                          extendedPageController:self
+            //                          viewAtIndex:_actualIndex+indexRight];
+            
+            _rightView = [_extendedPageControllerDelegate
+                          extendedPageController:self
+                          direction:APPageDirectionNext];
+            
+            _rightView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+            UIViewAutoresizingFlexibleHeight;
             _rightView.autoresizesSubviews = YES;
         }
     }
@@ -194,7 +305,10 @@
     
     
     self.contentOffset = CGPointMake(_leftView ? _mainView.frame.size.width : 0, 0);
-    self.contentSize = CGSizeMake(self.frame.size.width * ((_leftView ? 1 : 0) + (_mainView ? 1 : 0) + (_rightView ? 1 : 0)), self.frame.size.height);
+    self.contentSize = CGSizeMake(self.frame.size.width * ((_leftView ? 1 : 0) +
+                                                           (_mainView ? 1 : 0) +
+                                                           (_rightView ? 1 : 0)),
+                                  self.frame.size.height);
     
     if (_leftView) {
         _leftView.frame = [self _frameForViewWithIndex:indexLeft];
@@ -212,8 +326,17 @@
         [self addSubview:_rightView];
     }
     
+    // Give delegate chance to reuse view
+    if (dumpedView &&
+        [_extendedPageControllerDelegate
+         respondsToSelector:@selector(extendedPageController:dumpView:atIndex:)])
+    {
+        [_extendedPageControllerDelegate
+         extendedPageController:self
+         dumpView:dumpedView];
+    }
 }
-
+//------------------------------------------------------------------------------
 - (CGRect)_frameForViewWithIndex: (int)index {
     switch (index) {
         case indexLeft:
@@ -231,6 +354,7 @@
     }
 }
 
+//------------------------------------------------------------------------------
 - (void)_resetView: (UIView *)view
    withScaleFactor: (float)scaleFactor
 {

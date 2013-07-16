@@ -9,11 +9,31 @@
 #import <UIKit/UIKit.h>
 #import <QuartzCore/QuartzCore.h>
 
+
+typedef NS_ENUM(NSInteger, APPageDirection)
+{
+    APPageDirectionNone,
+    APPageDirectionPrevious,
+    APPageDirectionNext
+};
 @class APExtendedPageController;
 @protocol APExtendedPageControllerDelegate <NSObject>
-#warning AP: You must implement this method!
-- (UIView *)extendedPageController: (APExtendedPageController *)extendedPageController
+
+@required
+
+
+- (UIView *)extendedPageController: (APExtendedPageController *) extendedPageController
+                       direction: (APPageDirection)direction;
+- (void) extendedPageController: (APExtendedPageController *) extendedPageController
+               didMoveDirection: (APPageDirection)direction;
+@optional
+- (UIView *)extendedPageController: (APExtendedPageController *) extendedPageController
                        viewAtIndex: (NSInteger)index;
+
+- (void) extendedPageController: (APExtendedPageController *) extendedPageController
+                       dumpView: (UIView*) view;
+//- (UIView *)extendedPageController: (APExtendedPageController *)extendedPageController
+//                       viewAtIndex: (NSInteger)index;
 @end
 
 
@@ -23,14 +43,14 @@
     id <APExtendedPageControllerDelegate> _extendedPageControllerDelegate;
     
     UIView * _mainView;
-    NSInteger _actualIndex;
+    //    NSInteger _actualIndex;
     
     BOOL _displayBorder;
 }
 
 @property (nonatomic) id extendedPageControllerDelegate;
 @property (nonatomic, readonly) UIView * mainView;
-@property (nonatomic, readonly) NSInteger actualIndex;
+//@property (nonatomic, readonly) NSInteger actualIndex;
 
 @property (nonatomic) BOOL displayBorder;
 
