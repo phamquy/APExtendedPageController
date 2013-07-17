@@ -172,8 +172,23 @@
     }
     UIView* dumpedView = nil;
     NSInteger dumpIndex = -1;
-    
-    if (((int)self.contentOffset.x < self.frame.size.width && _leftView)) {
+    if (((int)self.contentOffset.x < self.frame.size.width && !_leftView))  {
+        if ([_extendedPageControllerDelegate
+             respondsToSelector:@selector(extendedPageController:direction:)])
+        {
+            //            _leftView = [_extendedPageControllerDelegate
+            //                         extendedPageController:self
+            //                         viewAtIndex:_actualIndex+indexLeft];
+            _leftView = [_extendedPageControllerDelegate
+                         extendedPageController:self
+                         direction:(APPageDirectionPrevious)];
+            
+            _leftView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+            UIViewAutoresizingFlexibleHeight;
+            _leftView.autoresizesSubviews = YES;
+        }
+    }
+    else if (((int)self.contentOffset.x < self.frame.size.width && _leftView)) {
         
         dumpedView = _rightView;
         _rightView = _mainView;

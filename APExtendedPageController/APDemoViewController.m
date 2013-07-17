@@ -88,10 +88,10 @@
         newidx = _currentIdx-1;
     }
     
-    //if ((newidx > 0) && (newidx < _views.count)) {
+    if ((newidx > 0) && (newidx < _views.count)) {
         return _views[newidx % 10];
-        //}
-        //return nil;
+    }
+    return nil;
 }
 
 - (void) extendedPageController: (APExtendedPageController *) extendedPageController
@@ -101,10 +101,14 @@
     if (direction == APPageDirectionNext)
     {
         _currentIdx++;
+        if(_currentIdx  > 9) _currentIdx = 0;
     }
     else if(direction == APPageDirectionPrevious)
     {
         _currentIdx--;
+        if (_currentIdx < 0) {
+            _currentIdx = 9;
+        }
     }
 }
 @end
